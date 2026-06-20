@@ -2,6 +2,9 @@
 
 -- === Application Launchers ===
 hl.bind("SUPER + T", hl.dsp.exec_cmd("{{TERMINAL_COMMAND}}"))
+hl.bind("SUPER + E", hl.dsp.exec_cmd("dolphin"))
+hl.bind("SUPER + C", hl.dsp.exec_cmd("zeditor"))
+hl.bind("SUPER + B", hl.dsp.exec_cmd("zen-browser"))
 hl.bind("SUPER + space", hl.dsp.exec_cmd("dms ipc call spotlight toggle"))
 hl.bind("ALT + space", hl.dsp.exec_cmd("dms ipc call spotlight-bar toggle"))
 hl.bind("SUPER + V", hl.dsp.exec_cmd("dms ipc call clipboard toggle"))
