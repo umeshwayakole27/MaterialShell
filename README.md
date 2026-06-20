@@ -1,21 +1,13 @@
 # DankMaterialShell
 
 <div align="center">
-  <a href="https://danklinux.com">
-    <img src="assets/danklogo.svg" alt="DankMaterialShell" width="200">
-  </a>
+  <img src="assets/danklogo.svg" alt="DankMaterialShell" width="200">
 
 ### A modern desktop shell for Wayland
 
 Built with [Quickshell](https://quickshell.org/) and [Go](https://go.dev/)
 
-[![Documentation](https://img.shields.io/badge/docs-danklinux.com-9ccbfb?style=for-the-badge&labelColor=101418)](https://danklinux.com/docs)
-[![GitHub stars](https://img.shields.io/github/stars/AvengeMedia/DankMaterialShell?style=for-the-badge&labelColor=101418&color=ffd700)](https://github.com/AvengeMedia/DankMaterialShell/stargazers)
 [![GitHub License](https://img.shields.io/github/license/AvengeMedia/DankMaterialShell?style=for-the-badge&labelColor=101418&color=b9c8da)](https://github.com/AvengeMedia/DankMaterialShell/blob/master/LICENSE)
-[![GitHub release](https://img.shields.io/github/v/release/AvengeMedia/DankMaterialShell?style=for-the-badge&labelColor=101418&color=9ccbfb)](https://github.com/AvengeMedia/DankMaterialShell/releases)
-[![Arch version](https://img.shields.io/archlinux/v/extra/x86_64/dms-shell?style=for-the-badge&labelColor=101418&color=9ccbfb)](https://archlinux.org/packages/extra/x86_64/dms-shell/)
-[![AUR version (git)](<https://img.shields.io/aur/version/dms-shell-git?style=for-the-badge&labelColor=101418&color=9ccbfb&label=AUR%20(git)>)](https://aur.archlinux.org/packages/dms-shell-git)
-[![Ko-Fi donate](https://img.shields.io/badge/donate-kofi?style=for-the-badge&logo=ko-fi&logoColor=ffffff&label=ko-fi&labelColor=101418&color=f16061&link=https%3A%2F%2Fko-fi.com%2Fdanklinux)](https://ko-fi.com/danklinux)
 
 </div>
 
@@ -67,16 +59,6 @@ https://github.com/user-attachments/assets/1200a739-7770-4601-8b85-695ca527819a
 
 </details>
 
-## Installation
-
-```bash
-curl -fsSL https://install.danklinux.com | sh
-```
-
-One command installs DMS and all dependencies on Arch, Fedora, Debian, Ubuntu, openSUSE, or Gentoo.
-
-**[Manual installation guide](https://danklinux.com/docs/dankmaterialshell/installation)**
-
 ## Features
 
 **Dynamic Theming**
@@ -101,13 +83,11 @@ MPRIS player controls, calendar sync, weather widgets, and clipboard history wit
 Lock screen, idle detection, auto-lock/suspend with separate AC/battery settings, and greeter support.
 
 **Plugin System**
-Extend functionality with the [plugin registry](https://plugins.danklinux.com).
+Extend functionality with dynamically-loaded QML plugins.
 
 ## Supported Compositors
 
 Works best with [niri](https://github.com/YaLTeR/niri), [Hyprland](https://hyprland.org/), [Sway](https://swaywm.org/), [MangoWC](https://github.com/DreamMaoMao/mangowc), [labwc](https://labwc.github.io/), [Scroll](https://github.com/dawsers/scroll), and [Miracle WM](https://github.com/miracle-wm-org/miracle-wm) with full workspace switching, overview integration, and monitor management. Other Wayland compositors work with reduced features.
-
-[Compositor configuration guide](https://danklinux.com/docs/dankmaterialshell/compositors)
 
 ## Command Line Interface
 
@@ -122,15 +102,255 @@ dms brightness list  # List available displays
 dms plugins search   # Browse plugin registry
 ```
 
-[Full CLI and IPC documentation](https://danklinux.com/docs/dankmaterialshell/keybinds-ipc)
+## Manual Installation (Arch Linux)
 
-## Documentation
+This guide builds everything from source.
 
-- **Website:** [danklinux.com](https://danklinux.com)
-- **Docs:** [danklinux.com/docs](https://danklinux.com/docs/)
-- **Theming:** [Application themes](https://danklinux.com/docs/dankmaterialshell/application-themes) | [Custom themes](https://danklinux.com/docs/dankmaterialshell/custom-themes)
-- **Plugins:** [Development guide](https://danklinux.com/docs/dankmaterialshell/plugins-overview)
-- **Support:** [Ko-fi](https://ko-fi.com/avengemediallc)
+### Prerequisites
+
+Ensure your system is up to date:
+
+```bash
+sudo pacman -Syu
+```
+
+### Step 1: Install Build Dependencies
+
+```bash
+sudo pacman -S --needed \
+    base-devel \
+    git \
+    go \
+    qt6-base \
+    qt6-declarative \
+    qt6-shadertools \
+    qt6-multimedia \
+    qt6-wayland \
+    cmake \
+    meson \
+    ninja \
+    pkg-config \
+    wayland-protocols \
+    wayland \
+    libxkbcommon \
+    cairo \
+    pango \
+    fontconfig \
+    dbus \
+    libinput \
+    libdisplay-info \
+    hwdata \
+    pipewire \
+    pulseaudio \
+    bluez \
+    bluez-utils \
+    networkmanager \
+    upower \
+    polkit \
+    pam
+```
+
+### Step 2: Install Quickshell
+
+Quickshell is the QML shell framework that DMS runs on. Install it from source:
+
+```bash
+# Clone quickshell
+git clone https://github.com/Quickshell/Quickshell.git
+cd Quickshell
+
+# Build and install
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build build
+sudo cmake --install build
+
+# Verify installation
+quickshell --version
+```
+
+### Step 3: Install Additional Runtime Dependencies
+
+```bash
+sudo pacman -S --needed \
+    qt6-svg \
+    qt6-imageformats \
+    qt6-tools \
+    qt6-translations \
+    ttf-font-awesome \
+    ttf-nerd-fonts-symbols \
+    ttf-inter \
+    noto-fonts \
+    noto-fonts-emoji \
+    matugen-bin \
+    dgop-bin \
+    cliphist \
+    python \
+    python-requests \
+    python-pillow \
+    imagemagick \
+    playerctl \
+    acpid \
+    brightnessctl \
+    bc
+```
+
+### Step 4: Build the Go Backend
+
+```bash
+# Clone this repository (or use your fork)
+git clone https://github.com/AvengeMedia/DankMaterialShell.git
+cd DankMaterialShell
+
+# Build the dms CLI
+cd core
+make
+
+# Verify the binary
+./bin/dms --help
+
+# Go back to repo root
+cd ..
+```
+
+### Step 5: Install the Binary
+
+```bash
+# Install dms binary
+sudo mkdir -p /usr/local/bin
+sudo cp core/bin/dms /usr/local/bin/dms
+
+# Verify
+dms --help
+```
+
+### Step 6: Install the QML Shell Files
+
+```bash
+sudo mkdir -p /usr/share/quickshell/dms
+sudo cp -r quickshell/* /usr/share/quickshell/dms/
+sudo rm -rf /usr/share/quickshell/dms/.git*
+sudo rm -rf /usr/share/quickshell/dms/.github
+```
+
+### Step 7: Install Shell Completions
+
+```bash
+# Generate and install shell completions
+sudo mkdir -p /usr/share/bash-completion/completions
+sudo mkdir -p /usr/share/zsh/site-functions
+sudo mkdir -p /usr/share/fish/vendor_completions.d
+
+dms completion bash | sudo tee /usr/share/bash-completion/completions/dms > /dev/null
+dms completion zsh | sudo tee /usr/share/zsh/site-functions/_dms > /dev/null
+dms completion fish | sudo tee /usr/share/fish/vendor_completions.d/dms.fish > /dev/null
+```
+
+### Step 8: Install Icon and Desktop Entry
+
+```bash
+# Icon
+sudo mkdir -p /usr/share/icons/hicolor/scalable/apps
+sudo cp assets/danklogo.svg /usr/share/icons/hicolor/scalable/apps/danklogo.svg
+sudo gtk-update-icon-cache -q /usr/share/icons/hicolor 2>/dev/null || true
+
+# Desktop entry
+sudo mkdir -p /usr/share/applications
+sudo cp assets/dms-open.desktop /usr/share/applications/dms-open.desktop
+sudo update-desktop-database -q /usr/share/applications 2>/dev/null || true
+```
+
+### Step 9: Set Up the Systemd User Service
+
+```bash
+# Install the service
+mkdir -p ~/.config/systemd/user
+sed 's|/usr/bin/dms|/usr/local/bin/dms|g' assets/systemd/dms.service > ~/.config/systemd/user/dms.service
+chmod 644 ~/.config/systemd/user/dms.service
+
+# Reload and enable
+systemctl --user daemon-reload
+systemctl --user enable --now dms.service
+```
+
+The `dms.service` is of type `dbus` with bus name `org.freedesktop.Notifications`. It starts automatically when the notification bus name is requested.
+
+Alternatively, for manual startup without systemd:
+
+```bash
+dms run -d  # Daemon mode (background)
+dms run     # Foreground mode (for debugging)
+```
+
+### Step 10: Configure Your Compositor
+
+#### niri
+
+DMS includes an auto-configurator. Run:
+
+```bash
+dms setup binds     # Set up keybinds
+dms setup layout    # Set up window layout
+dms setup colors    # Set up terminal colors
+dms doctor          # Verify setup
+```
+
+Or manually, add to your niri config (`~/.config/niri/config.kdl`):
+
+```kdl
+// DMS integration
+spawn-at-startup "dms" "run"
+
+// Sane keybinds for DMS
+binds {
+    // Spotlight launcher
+    Mod+Space { spawn "dms" "ipc" "call" "spotlight" "toggle"; }
+
+    // Control center
+    Mod+Comma { spawn "dms" "ipc" "call" "control-center" "toggle"; }
+
+    // Screenshot
+    Print { spawn "dms" "screenshot" "area"; }
+    Shift+Print { spawn "dms" "screenshot" "output"; }
+
+    // Brightness
+    XF86MonBrightnessDown { spawn "dms" "ipc" "call" "brightness" "decrement"; }
+    XF86MonBrightnessUp { spawn "dms" "ipc" "call" "brightness" "increment"; }
+
+    // Volume
+    XF86AudioRaiseVolume { spawn "dms" "ipc" "call" "audio" "setvolume" "5+"; }
+    XF86AudioLowerVolume { spawn "dms" "ipc" "call" "audio" "setvolume" "5-"; }
+    XF86AudioMute { spawn "dms" "ipc" "call" "audio" "setmute" "toggle"; }
+
+    // Media
+    XF86AudioPlay { spawn "dms" "ipc" "call" "mpris" "playpause"; }
+    XF86AudioNext { spawn "dms" "ipc" "call" "mpris" "next"; }
+    XF86AudioPrev { spawn "dms" "ipc" "call" "mpris" "previous"; }
+
+    // Lock
+    Mod+Shift+Escape { spawn "dms" "ipc" "call" "lock" "activate"; }
+}
+```
+
+#### Hyprland
+
+```bash
+dms setup binds
+dms doctor
+```
+
+Or manually in `~/.config/hypr/hyprland.conf`:
+
+```conf
+# DMS Integration
+exec-once = dms run
+
+# Keybinds
+bind = $mod, SPACE, exec, dms ipc call spotlight toggle
+bind = $mod, COMMA, exec, dms ipc call control-center toggle
+bind = $mod, ESCAPE, exec, dms ipc call lock activate
+bind = , Print, exec, dms screenshot area
+bind = SHIFT, Print, exec, dms screenshot output
+```
 
 ## Development
 
@@ -167,28 +387,13 @@ quickshell -p quickshell/
 }
 ```
 
-## Contributing
-
-Contributions welcome. Bug fixes, widgets, features, documentation, and plugins all help.
-
-1. Fork the repository
-2. Make your changes
-3. Test thoroughly
-4. Open a pull request
-
-For documentation contributions, see [DankLinux-Docs](https://github.com/AvengeMedia/DankLinux-Docs).
-
 ## Credits
 
-- [quickshell](https://quickshell.org/) - Shell framework
+- [Quickshell](https://quickshell.org/) - Shell framework
 - [niri](https://github.com/YaLTeR/niri) - Scrolling window manager
 - [Ly-sec](http://github.com/ly-sec) - Wallpaper effects from [Noctalia](https://github.com/noctalia-dev/noctalia-shell)
 - [soramanew](https://github.com/soramanew) - [Caelestia](https://github.com/caelestia-dots/shell) inspiration
 - [end-4](https://github.com/end-4) - [dots-hyprland](https://github.com/end-4/dots-hyprland) inspiration
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=AvengeMedia/DankMaterialShell&type=date&legend=top-left)](https://www.star-history.com/#AvengeMedia/DankMaterialShell&type=date&legend=top-left)
 
 ## License
 

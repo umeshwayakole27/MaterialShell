@@ -149,8 +149,11 @@ go-wayland-scanner -i internal/proto/xml/wlr-gamma-control-unstable-v1.xml \
 
 **Interactive (TUI):**
 
+Build dankinstall and run it directly:
+
 ```bash
-curl -fsSL https://install.danklinux.com | sh
+make dankinstall
+sudo ./bin/dankinstall
 ```
 
 **Headless (unattended):**
@@ -158,8 +161,9 @@ curl -fsSL https://install.danklinux.com | sh
 Headless mode requires cached sudo credentials. Run `sudo -v` first:
 
 ```bash
-sudo -v && curl -fsSL https://install.danklinux.com | sh -s -- -c niri -t ghostty -y
-sudo -v && curl -fsSL https://install.danklinux.com | sh -s -- -c hyprland -t kitty --include-deps dms-greeter -y
+make dankinstall
+sudo -v && sudo ./bin/dankinstall -c niri -t ghostty -y
+sudo -v && sudo ./bin/dankinstall -c hyprland -t kitty --include-deps dms-greeter -y
 ```
 
 | Flag | Short | Description |

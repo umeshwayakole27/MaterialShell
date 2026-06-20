@@ -2,10 +2,6 @@
 
 Create widgets for DankBar and Control Center using dynamically-loaded QML components.
 
-## Plugin Registry
-
-Browse and discover community plugins at **https://plugins.danklinux.com/**
-
 ## Overview
 
 Plugins let you add custom widgets to DankBar and Control Center. They're discovered from `~/.config/DankMaterialShell/plugins/` and managed via PluginService.
