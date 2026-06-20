@@ -294,14 +294,7 @@ func runSetup() error {
 
 	wm, wmSelected := promptCompositor()
 	terminal, terminalSelected := promptTerminal()
-	useSystemd := true
-	if wmSelected {
-		if wm == deps.WindowManagerMango {
-			useSystemd = false
-		} else {
-			useSystemd = promptSystemd()
-		}
-	}
+	useSystemd := false
 
 	if !wmSelected && !terminalSelected {
 		fmt.Println("No configurations selected. Exiting.")
@@ -449,19 +442,6 @@ func promptTerminal() (deps.Terminal, bool) {
 	default:
 		return deps.TerminalGhostty, false
 	}
-}
-
-func promptSystemd() bool {
-	fmt.Println("\nUse systemd for session management?")
-	fmt.Println("1) Yes (recommended for most distros)")
-	fmt.Println("2) No (standalone, no systemd integration)")
-
-	var response string
-	fmt.Print("\nChoice (1-2): ")
-	fmt.Scanln(&response)
-	response = strings.TrimSpace(response)
-
-	return response != "2"
 }
 
 func checkExistingConfigs(wm deps.WindowManager, wmSelected bool, terminal deps.Terminal, terminalSelected bool) bool {

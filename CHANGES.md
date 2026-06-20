@@ -34,6 +34,10 @@ git rebase upstream/main
 |------|--------|--------|
 | `core/internal/config/embedded/hyprland.lua` | Added `plasma-kwalletd.service`, `kdeconnect-indicator.service`, `dms.service` to startup `exec_cmd` block (both systemd and non-systemd paths) | KDE user needs KWallet+KDE Connect auto-started |
 | `core/internal/config/hyprland_lua.go` | Non-systemd transform: same KDE service starts added | Non-systemd path parity |
+| `core/internal/config/embedded/hyprland.lua` | **Removed** `plasma-kwalletd.service` from startup block | PAM `pam_kwallet5.so` already handles wallet startup on SDDM login; starting it again spawns a 2nd `kwalletd6` without PAM credentials, causing password prompt |
+| `core/internal/config/hyprland_lua.go` | **Removed** `plasma-kwalletd.service` from non-systemd transform | Same reason — wallet daemon must be the PAM-started one to receive login credentials |
+| `/etc/pam.d/sddm` | Removed `kwalletd=/usr/bin/ksecretd` override from `pam_kwallet5.so` line | Was starting `ksecretd` instead of `kwalletd6`; `kwalletd6` then took over the D-Bus secret service name without PAM creds, causing password prompt |
+| `core/cmd/dms/commands_setup.go` | Removed `promptSystemd()` call and function; hardcoded `useSystemd = false` | Systemd-based DMS startup caused double DMS instances; `dms run` directly from Hyprland `exec_cmd` is the only method now |
 
 ### Dynamic Workspaces + GNOME-like Behavior
 | File | Change | Reason |
