@@ -46,6 +46,10 @@ hl.bind("SUPER + SHIFT + T", hl.dsp.window.float({ action = "toggle" }))
 hl.bind("SUPER + W", hl.dsp.group.toggle())
 hl.bind("SUPER + SHIFT + W", hl.dsp.exec_cmd("dms ipc call window-rules toggle"))
 
+-- === Window Cycling (GNOME-style Alt+Tab across all workspaces) ===
+hl.bind("ALT + Tab", hl.dsp.exec_cmd("$HOME/.config/hypr/dms/cycle-window.sh next"), { repeating = true })
+hl.bind("ALT + SHIFT + Tab", hl.dsp.exec_cmd("$HOME/.config/hypr/dms/cycle-window.sh prev"), { repeating = true })
+
 -- === Focus Navigation ===
 hl.bind("SUPER + left", hl.dsp.focus({ direction = "l" }))
 hl.bind("SUPER + down", hl.dsp.focus({ direction = "d" }))

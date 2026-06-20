@@ -9,4 +9,10 @@ hl.config({
 	decoration = {
 		rounding = 12,
 	},
+	misc = {
+		create_new_workspace = true,
+	},
 })
+
+hl.config({ workspace = { id = 1, persistent = true } })
+hl.config({ workspace = { id = 2, persistent = true } })

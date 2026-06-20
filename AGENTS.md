@@ -1,4 +1,7 @@
-# DankMaterialShell (DMS)
+# AGENTS.md — MaterialShell (DankMaterialShell Fork)
+
+> **Note:** This file mirrors [`GEMINI.md`](./GEMINI.md). Both are kept in sync.  
+> See `GEMINI.md` for the canonical version.
 
 A complete desktop shell for Wayland compositors — replaces waybar, swaylock, swayidle, mako, fuzzel, polkit, and everything else you'd normally stitch together to make a desktop.
 
@@ -9,7 +12,7 @@ A complete desktop shell for Wayland compositors — replaces waybar, swaylock, 
 > **Fork:** This repository is a fork of [DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell).  
 > All modifications are tracked in [`CHANGES.md`](./CHANGES.md).  
 > **Agents:** Read `CHANGES.md` before modifying anything and update it after each change.  
-> A copy of this file exists as [`AGENTS.md`](./AGENTS.md) for agents that discover that filename.
+> See also [`GEMINI.md`](./GEMINI.md).
 
 ---
 

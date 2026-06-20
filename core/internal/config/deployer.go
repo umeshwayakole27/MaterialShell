@@ -797,13 +797,14 @@ func (cd *ConfigDeployer) deployHyprlandDmsConfigs(dmsDir string, terminalComman
 		content   string
 		overwrite bool
 	}{
-		{name: "colors.lua", content: DMSColorsLuaConfig},
-		{name: "layout.lua", content: DMSLayoutLuaConfig},
+		{name: "colors.lua", content: DMSColorsLuaConfig, overwrite: true},
+		{name: "layout.lua", content: DMSLayoutLuaConfig, overwrite: true},
 		{name: "binds.lua", content: strings.ReplaceAll(DMSBindsLuaConfig, "{{TERMINAL_COMMAND}}", terminalCommand), overwrite: true},
 		{name: "binds-user.lua", content: DMSBindsUserLuaConfig},
 		{name: "outputs.lua", content: DMSOutputsLuaConfig},
 		{name: "cursor.lua", content: DMSCursorLuaConfig},
 		{name: "windowrules.lua", content: DMSWindowRulesLuaConfig},
+		{name: "cycle-window.sh", content: HyprCycleWindowScript},
 	}
 
 	for _, cfg := range configs {
@@ -816,7 +817,11 @@ func (cd *ConfigDeployer) deployHyprlandDmsConfigs(dmsDir string, terminalComman
 			cd.log(fmt.Sprintf("Skipping %s (already exists)", cfg.name))
 			continue
 		}
-		if err := os.WriteFile(path, []byte(cfg.content), 0o644); err != nil {
+		perm := os.FileMode(0o644)
+		if isScript(cfg.name) {
+			perm = 0o755
+		}
+		if err := os.WriteFile(path, []byte(cfg.content), perm); err != nil {
 			return fmt.Errorf("failed to write %s: %w", cfg.name, err)
 		}
 		if existed {
@@ -890,4 +895,8 @@ func (cd *ConfigDeployer) transformNiriConfigForNonSystemd(config, terminalComma
 	}
 
 	return config
+}
+
+func isScript(name string) bool {
+	return strings.HasSuffix(name, ".sh")
 }

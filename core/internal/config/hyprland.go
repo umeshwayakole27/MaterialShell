@@ -25,3 +25,6 @@ var DMSWindowRulesLuaConfig string
 
 //go:embed embedded/hypr-binds-user.lua
 var DMSBindsUserLuaConfig string
+
+//go:embed embedded/hypr-cycle-window.sh
+var HyprCycleWindowScript string

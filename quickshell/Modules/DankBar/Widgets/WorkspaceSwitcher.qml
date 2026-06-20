@@ -246,7 +246,7 @@ Item {
         }
 
         if (!SettingsData.showOccupiedWorkspacesOnly) {
-            return filtered;
+            return addAvailableWorkspace(filtered);
         }
 
         const hyprlandToplevels = Array.from(Hyprland.toplevels?.values || []);
@@ -256,6 +256,22 @@ Item {
                 return true;
             return hyprlandToplevels.some(tl => tl.workspace?.id === ws.id);
         });
+    }
+
+    function addAvailableWorkspace(list) {
+        let maxOccupied = 0;
+        for (const tl of Hyprland.toplevels?.values || [])
+            if (tl.workspace?.id > maxOccupied) maxOccupied = tl.workspace.id;
+        if (maxOccupied <= 0) return list;
+
+        const targetId = maxOccupied + 1;
+        for (const ws of list)
+            if (ws.id === targetId) return list;
+
+        const result = list.slice();
+        result.push({ id: targetId, name: String(targetId) });
+        result.sort((a, b) => a.id - b.id);
+        return result;
     }
 
     function getHyprlandActiveWorkspace() {
