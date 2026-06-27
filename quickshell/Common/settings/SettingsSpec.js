@@ -74,6 +74,8 @@ var SPEC = {
     wallpaperFillMode: { def: "Fill" },
     blurredWallpaperLayer: { def: false },
     blurWallpaperOnOverview: { def: false },
+    wallpaperBackgroundColorMode: { def: "black" },
+    wallpaperBackgroundCustomColor: { def: "#000000" },
 
     showLauncherButton: { def: true },
     showWorkspaceSwitcher: { def: true },
@@ -94,6 +96,10 @@ var SPEC = {
     showClock: { def: true },
     showNotificationButton: { def: true },
     showBattery: { def: true },
+    showBatteryPercent: { def: true },
+    showBatteryPercentOnlyOnBattery: { def: false },
+    showBatteryTime: { def: false },
+    showBatteryTimeOnlyOnBattery: { def: false },
     showControlCenterButton: { def: true },
     showCapsLockIndicator: { def: true },
 
@@ -157,6 +163,19 @@ var SPEC = {
     workspaceFocusedBorderColor: { def: "primary" },
     workspaceFocusedBorderCustomColor: { def: "#6750A4" },
     workspaceFocusedBorderThickness: { def: 2 },
+    workspaceUnfocusedMonitorSeparateAppearance: { def: false },
+    workspaceUnfocusedMonitorColorMode: { def: "default" },
+    workspaceUnfocusedMonitorFocusedCustomColor: { def: "#6750A4" },
+    workspaceUnfocusedMonitorOccupiedColorMode: { def: "none" },
+    workspaceUnfocusedMonitorOccupiedCustomColor: { def: "#625B71" },
+    workspaceUnfocusedMonitorUnfocusedColorMode: { def: "default" },
+    workspaceUnfocusedMonitorUnfocusedCustomColor: { def: "#49454E" },
+    workspaceUnfocusedMonitorUrgentColorMode: { def: "default" },
+    workspaceUnfocusedMonitorUrgentCustomColor: { def: "#B3261E" },
+    workspaceUnfocusedMonitorBorderEnabled: { def: false },
+    workspaceUnfocusedMonitorBorderColor: { def: "primary" },
+    workspaceUnfocusedMonitorBorderCustomColor: { def: "#6750A4" },
+    workspaceUnfocusedMonitorBorderThickness: { def: 2 },
     workspaceNameIcons: { def: {} },
     waveProgressEnabled: { def: true },
     scrollTitleEnabled: { def: true },
@@ -227,6 +246,7 @@ var SPEC = {
     appDrawerSectionViewModes: { def: {} },
     niriOverviewOverlayEnabled: { def: true },
     dankLauncherV2Size: { def: "compact" },
+    dankLauncherV2ShowSourceBadges: { def: true },
     dankLauncherV2BorderEnabled: { def: false },
     dankLauncherV2BorderThickness: { def: 2 },
     dankLauncherV2BorderColor: { def: "primary" },
@@ -241,10 +261,14 @@ var SPEC = {
 
     useAutoLocation: { def: false },
     weatherEnabled: { def: true },
+    dashTabs: { def: [{ id: "overview", enabled: true }, { id: "media", enabled: true }, { id: "wallpaper", enabled: true }, { id: "weather", enabled: true }, { id: "settings", enabled: true }] },
 
     networkPreference: { def: "auto" },
 
-    iconTheme: { def: "System Default", onChange: "applyStoredIconTheme" },
+    iconThemeDark: { def: "System Default", onChange: "applyStoredIconTheme" },
+    iconThemeLight: { def: "System Default", onChange: "applyStoredIconTheme" },
+    iconThemePerMode: { def: false, onChange: "applyStoredIconTheme" },
+    lastAppliedIconTheme: { def: "" },
     availableIconThemes: { def: ["System Default"], persist: false },
     systemDefaultIconTheme: { def: "", persist: false },
     qt5ctAvailable: { def: false, persist: false },
@@ -597,6 +621,7 @@ var SPEC = {
     desktopWidgetGroups: { def: [] },
 
     builtInPluginSettings: { def: {} },
+    clipboardClickToPaste: { def: false },
     clipboardEnterToPaste: { def: false },
     clipboardRememberTypeFilter: { def: false },
     clipboardTypeFilter: { def: "all" },
@@ -617,7 +642,10 @@ var SPEC = {
     frameCloseGaps: { def: true },
     frameLauncherEmergeSide: { def: "bottom" },
     frameLauncherArcExtender: { def: false },
-    frameMode: { def: "connected" }
+    frameMode: { def: "connected" },
+    barInsetPaddingShared: { def: -1 },
+    barInsetPaddingSyncAll: { def: false },
+    frameBarInsetPadding: { def: -1 }
 };
 
 function getValidKeys() {

@@ -19,7 +19,7 @@ Column {
     }
 
     signal itemEnabledChanged(string sectionId, string itemId, bool enabled)
-    signal itemOrderChanged(var newOrder)
+    signal itemOrderChanged(string sectionId, var orderedIds)
     signal addWidget(string sectionId)
     signal removeWidget(string sectionId, int widgetIndex)
     signal spacerSizeChanged(string sectionId, int widgetIndex, int newSize)
@@ -38,18 +38,120 @@ Column {
     signal overflowSettingChanged(string sectionId, int widgetIndex, string settingName, var value)
     signal hideWhenIdleChanged(string sectionId, int widgetIndex, bool enabled)
 
-    function cloneWidgetData(widget) {
-        var result = {
-            "id": widget.id,
-            "enabled": widget.enabled
-        };
-        var keys = ["size", "selectedGpuIndex", "pciId", "mountPath", "diskUsageMode", "minimumWidth", "showSwap", "showInGb", "mediaSize", "clockCompactMode", "focusedWindowSize", "focusedWindowCompactMode", "runningAppsCompactMode", "keyboardLayoutNameCompactMode", "keyboardLayoutNameShowIcon", "runningAppsGroupByApp", "runningAppsCurrentWorkspace", "runningAppsCurrentMonitor", "showNetworkIcon", "showBluetoothIcon", "showAudioIcon", "showAudioPercent", "showVpnIcon", "showBrightnessIcon", "showBrightnessPercent", "showMicIcon", "showMicPercent", "showBatteryIcon", "showPrinterIcon", "showScreenSharingIcon", "showIdleInhibitorIcon", "showDoNotDisturbIcon", "controlCenterGroupOrder", "barMaxVisibleApps", "barMaxVisibleRunningApps", "barShowOverflowBadge", "trayUseInlineExpansion", "trayPopupSingleLine", "trayAutoOverflow", "trayMaxVisibleItems"];
-        for (var i = 0; i < keys.length; i++) {
-            if (widget[keys[i]] !== undefined)
-                result[keys[i]] = widget[keys[i]];
-        }
-        return result;
+    // Cross-section drag coordination with WidgetsTab (positions are section-local)
+    signal dragStarted(string sectionId, string id, int index, var widgetData, var localPos)
+    signal dragMoved(string sectionId, var localPos)
+    signal dragEnded(string sectionId)
+
+    property string highlightedId: ""
+    property string highlightedSection: ""
+
+    // Absolute-Y spring drag state (mirrors DankDashTab); gapIndex is the phantom drop slot
+    property var workingOrder: []
+    property int draggingIndex: -1
+    property string draggingId: ""
+    property var dragStartOrder: []
+    property int gapIndex: -1
+    property bool crossSectionActive: false
+
+    readonly property real rowHeight: 72
+    readonly property real rowSpacing: Theme.spacingS
+
+    readonly property real totalHeight: {
+        const n = items.length;
+        let base = n * (rowHeight + rowSpacing);
+        if (gapIndex >= 0)
+            base += (rowHeight + rowSpacing);
+        return Math.max(0, base - rowSpacing);
     }
+
+    function resetWorkingOrder() {
+        const arr = [];
+        for (var i = 0; i < items.length; i++)
+            arr.push(i);
+        workingOrder = arr;
+    }
+
+    function slotYForIndex(i) {
+        var pos = workingOrder.indexOf(i);
+        if (pos < 0)
+            pos = i;
+        var y = pos * (rowHeight + rowSpacing);
+        if (gapIndex >= 0 && pos >= gapIndex)
+            y += (rowHeight + rowSpacing);
+        return y;
+    }
+
+    function slotIndexForY(localY) {
+        var idx = Math.round(localY / (rowHeight + rowSpacing));
+        return Math.max(0, Math.min(idx, items.length));
+    }
+
+    function slotIndexForGlobalY(rootItem, gy) {
+        var p = reorderArea.mapFromItem(rootItem, 0, gy);
+        return slotIndexForY(p.y);
+    }
+
+    function beginDrag(i) {
+        draggingIndex = i;
+        draggingId = (items[i] && items[i].id) ? items[i].id : "";
+        dragStartOrder = workingOrder.slice();
+        crossSectionActive = false;
+    }
+
+    function updateDragTarget(centerY) {
+        if (draggingIndex < 0)
+            return;
+        var pos = Math.floor(centerY / (rowHeight + rowSpacing));
+        pos = Math.max(0, Math.min(pos, items.length - 1));
+        var arr = workingOrder.slice();
+        var d = arr.indexOf(draggingIndex);
+        if (d < 0 || d === pos)
+            return;
+        arr.splice(d, 1);
+        arr.splice(pos, 0, draggingIndex);
+        workingOrder = arr;
+    }
+
+    function setCrossMode(active) {
+        if (crossSectionActive === active)
+            return;
+        crossSectionActive = active;
+        if (active)
+            workingOrder = dragStartOrder.slice();
+    }
+
+    function openGapAt(idx) {
+        gapIndex = Math.max(0, Math.min(idx, items.length));
+    }
+
+    function clearGap() {
+        gapIndex = -1;
+    }
+
+    function commitDrag() {
+        if (draggingIndex < 0)
+            return;
+        const changed = JSON.stringify(workingOrder) !== JSON.stringify(dragStartOrder);
+        const orderedIds = workingOrder.map(i => items[i].id);
+        draggingIndex = -1;
+        draggingId = "";
+        crossSectionActive = false;
+        gapIndex = -1;
+        if (changed)
+            itemOrderChanged(sectionId, orderedIds);
+    }
+
+    function cancelDrag() {
+        draggingIndex = -1;
+        draggingId = "";
+        crossSectionActive = false;
+        gapIndex = -1;
+        resetWorkingOrder();
+    }
+
+    onItemsChanged: resetWorkingOrder()
+    Component.onCompleted: resetWorkingOrder()
 
     width: parent.width
     height: implicitHeight
@@ -74,11 +176,19 @@ Column {
         }
     }
 
-    Column {
-        id: itemsList
+    Item {
+        id: reorderArea
 
         width: parent.width
-        spacing: Theme.spacingS
+        height: root.totalHeight
+
+        Behavior on height {
+            NumberAnimation {
+                duration: Theme.expressiveDurations.normal
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Theme.expressiveCurves.expressiveDefaultSpatial
+            }
+        }
 
         Repeater {
             model: root.items
@@ -86,22 +196,75 @@ Column {
             delegate: Item {
                 id: delegateItem
 
-                property bool held: dragArea.pressed
-                property real originalY: y
+                readonly property int rowIndex: index
+                readonly property bool dragging: root.draggingIndex === rowIndex
+                readonly property bool highlighted: root.highlightedId !== "" && root.highlightedId === modelData.id && root.highlightedSection === root.sectionId
 
-                width: itemsList.width
-                height: Math.max(70, textColumn.implicitHeight + 32)
-                z: held ? 2 : 1
+                width: reorderArea.width
+                height: root.rowHeight
+                z: dragging ? 100 : (highlighted ? 3 : 1)
+                opacity: (dragging && root.crossSectionActive) ? 0 : 1
+
+                Binding {
+                    target: delegateItem
+                    property: "y"
+                    value: root.slotYForIndex(delegateItem.rowIndex)
+                    when: !delegateItem.dragging
+                    restoreMode: Binding.RestoreNone
+                }
+
+                onYChanged: {
+                    if (!dragging)
+                        return;
+                    root.dragMoved(root.sectionId, delegateItem.mapToItem(root, delegateItem.width / 2, delegateItem.height / 2));
+                    if (!root.crossSectionActive)
+                        root.updateDragTarget(y + height / 2);
+                }
+
+                Behavior on y {
+                    enabled: !delegateItem.dragging
+
+                    NumberAnimation {
+                        duration: Theme.expressiveDurations.expressiveDefaultSpatial
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Theme.expressiveCurves.expressiveFastSpatial
+                    }
+                }
 
                 Rectangle {
                     id: itemBackground
 
                     anchors.fill: parent
                     anchors.margins: 2
-                    radius: Theme.cornerRadius
-                    color: Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.8)
-                    border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
-                    border.width: 0
+                    scale: delegateItem.dragging ? 1.02 : 1.0
+                    transformOrigin: Item.Center
+                    radius: delegateItem.dragging ? Theme.cornerRadius + 6 : Theme.cornerRadius
+                    color: delegateItem.dragging ? Theme.secondaryContainer : Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.8)
+                    border.color: delegateItem.dragging ? Theme.primary : Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.2)
+                    border.width: delegateItem.dragging ? 2 : 0
+
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: Theme.shortDuration
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                    Behavior on radius {
+                        NumberAnimation {
+                            duration: Theme.shortDuration
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: Theme.shortDuration
+                        }
+                    }
+                    Behavior on border.color {
+                        ColorAnimation {
+                            duration: Theme.shortDuration
+                        }
+                    }
 
                     DankIcon {
                         name: "drag_indicator"
@@ -493,6 +656,39 @@ Column {
                             }
                         }
 
+                        DankActionButton {
+                            id: batteryMenuButton
+                            visible: modelData.id === "battery"
+                            buttonSize: 32
+                            iconName: "more_vert"
+                            iconSize: 18
+                            iconColor: Theme.outline
+                            onClicked: {
+                                batteryContextMenu.widgetData = modelData;
+                                batteryContextMenu.sectionId = root.sectionId;
+                                batteryContextMenu.widgetIndex = index;
+
+                                var buttonPos = batteryMenuButton.mapToItem(root, 0, 0);
+                                var popupWidth = batteryContextMenu.width;
+                                var popupHeight = batteryContextMenu.height;
+
+                                var xPos = buttonPos.x - popupWidth - Theme.spacingS;
+                                if (xPos < 0)
+                                    xPos = buttonPos.x + batteryMenuButton.width + Theme.spacingS;
+
+                                var yPos = buttonPos.y - popupHeight / 2 + batteryMenuButton.height / 2;
+                                if (yPos < 0) {
+                                    yPos = Theme.spacingS;
+                                } else if (yPos + popupHeight > root.height) {
+                                    yPos = root.height - popupHeight - Theme.spacingS;
+                                }
+
+                                batteryContextMenu.x = xPos;
+                                batteryContextMenu.y = yPos;
+                                batteryContextMenu.open();
+                            }
+                        }
+
                         Row {
                             spacing: Theme.spacingXS
                             visible: modelData.id === "clock" || modelData.id === "keyboard_layout_name" || modelData.id === "appsDock" || modelData.id === "systemTray"
@@ -833,41 +1029,36 @@ Column {
                         anchors.left: parent.left
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
-                        width: 60
+                        anchors.right: actionButtons.left
                         hoverEnabled: true
-                        cursorShape: Qt.SizeVerCursor
-                        drag.target: held ? delegateItem : undefined
+                        cursorShape: delegateItem.dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                        drag.target: delegateItem
                         drag.axis: Drag.YAxis
-                        drag.minimumY: -delegateItem.height
-                        drag.maximumY: itemsList.height
+                        drag.minimumY: -2000
+                        drag.maximumY: 4000
+                        drag.smoothed: false
                         preventStealing: true
                         onPressed: {
-                            delegateItem.z = 2;
-                            delegateItem.originalY = delegateItem.y;
+                            root.beginDrag(delegateItem.rowIndex);
+                            root.dragStarted(root.sectionId, modelData.id, delegateItem.rowIndex, modelData, delegateItem.mapToItem(root, delegateItem.width / 2, delegateItem.height / 2));
                         }
-                        onReleased: {
-                            delegateItem.z = 1;
-                            if (drag.active) {
-                                var newIndex = Math.round(delegateItem.y / (delegateItem.height + itemsList.spacing));
-                                newIndex = Math.max(0, Math.min(newIndex, root.items.length - 1));
-                                if (newIndex !== index) {
-                                    var newItems = root.items.slice();
-                                    var draggedItem = newItems.splice(index, 1)[0];
-                                    newItems.splice(newIndex, 0, draggedItem);
-                                    root.itemOrderChanged(newItems.map(item => root.cloneWidgetData(item)));
-                                }
-                            }
-                            delegateItem.x = 0;
-                            delegateItem.y = delegateItem.originalY;
-                        }
+                        onReleased: root.dragEnded(root.sectionId)
                     }
+                }
 
-                    Behavior on y {
-                        enabled: !dragArea.held && !dragArea.drag.active
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -2
+                    radius: Theme.cornerRadius + 2
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Theme.primary
+                    opacity: delegateItem.highlighted && !delegateItem.dragging ? 0.6 : 0
+                    visible: opacity > 0.01
 
+                    Behavior on opacity {
                         NumberAnimation {
                             duration: Theme.shortDuration
-                            easing.type: Theme.standardEasing
                         }
                     }
                 }
@@ -1845,7 +2036,7 @@ Column {
                         setting: "showDoNotDisturbIcon"
                     }
                 ]
-          }
+            }
         ]
         property var controlCenterGroups: defaultControlCenterGroups
         property int draggedControlCenterGroupIndex: -1
@@ -2555,6 +2746,256 @@ Column {
                                 root.gpuSelectionChanged(gpuContextMenu.sectionId, gpuContextMenu.widgetIndex, index);
                                 gpuContextMenu.close();
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Popup {
+        id: batteryContextMenu
+
+        property var widgetData: null
+        property string sectionId: ""
+        property int widgetIndex: -1
+        readonly property var currentWidgetData: (widgetIndex >= 0 && widgetIndex < root.items.length) ? root.items[widgetIndex] : widgetData
+
+        width: 270
+        height: batteryMenuColumn.implicitHeight + Theme.spacingS * 2
+        padding: 0
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            color: Theme.surfaceContainer
+            radius: Theme.cornerRadius
+            border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.08)
+            border.width: 0
+        }
+
+        contentItem: Item {
+            Column {
+                id: batteryMenuColumn
+                anchors.fill: parent
+                anchors.margins: Theme.spacingS
+                spacing: 2
+
+                Rectangle {
+                    width: parent.width
+                    height: Math.max(18, Theme.fontSizeSmall) + Theme.spacingM * 2
+                    radius: Theme.cornerRadius
+                    color: batteryPercentArea.containsMouse ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.12) : "transparent"
+
+                    Row {
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.spacingS
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Theme.spacingS
+
+                        DankIcon {
+                            name: "percent"
+                            size: 18
+                            color: Theme.outline
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        StyledText {
+                            text: I18n.tr("Show Percentage")
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceText
+                            font.weight: Font.Normal
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    DankToggle {
+                        id: batteryPercentToggle
+                        anchors.right: parent.right
+                        anchors.rightMargin: Theme.spacingS
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 40
+                        height: 20
+                        checked: batteryContextMenu.currentWidgetData?.showBatteryPercent ?? SettingsData.showBatteryPercent
+                        onToggled: {
+                            root.overflowSettingChanged(batteryContextMenu.sectionId, batteryContextMenu.widgetIndex, "showBatteryPercent", toggled);
+                        }
+                    }
+
+                    MouseArea {
+                        id: batteryPercentArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onPressed: {
+                            batteryPercentToggle.checked = !batteryPercentToggle.checked;
+                            root.overflowSettingChanged(batteryContextMenu.sectionId, batteryContextMenu.widgetIndex, "showBatteryPercent", batteryPercentToggle.checked);
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: Math.max(18, Theme.fontSizeSmall) + Theme.spacingM * 2
+                    radius: Theme.cornerRadius
+                    color: batteryPercentOnlyOnBatteryArea.containsMouse && batteryPercentToggle.checked ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.12) : "transparent"
+                    opacity: batteryPercentToggle.checked ? 1.0 : 0.5
+
+                    Row {
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.spacingS + 18
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Theme.spacingS
+
+                        DankIcon {
+                            name: "battery_charging_full"
+                            size: 18
+                            color: Theme.outline
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        StyledText {
+                            text: I18n.tr("Only on Battery")
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceText
+                            font.weight: Font.Normal
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    DankToggle {
+                        id: batteryPercentOnlyOnBatteryToggle
+                        anchors.right: parent.right
+                        anchors.rightMargin: Theme.spacingS
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 40
+                        height: 20
+                        enabled: batteryPercentToggle.checked
+                        checked: batteryContextMenu.currentWidgetData?.showBatteryPercentOnlyOnBattery ?? SettingsData.showBatteryPercentOnlyOnBattery
+                        onToggled: {
+                            root.overflowSettingChanged(batteryContextMenu.sectionId, batteryContextMenu.widgetIndex, "showBatteryPercentOnlyOnBattery", toggled);
+                        }
+                    }
+
+                    MouseArea {
+                        id: batteryPercentOnlyOnBatteryArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: batteryPercentToggle.checked
+                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onPressed: {
+                            batteryPercentOnlyOnBatteryToggle.checked = !batteryPercentOnlyOnBatteryToggle.checked;
+                            root.overflowSettingChanged(batteryContextMenu.sectionId, batteryContextMenu.widgetIndex, "showBatteryPercentOnlyOnBattery", batteryPercentOnlyOnBatteryToggle.checked);
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: Math.max(18, Theme.fontSizeSmall) + Theme.spacingM * 2
+                    radius: Theme.cornerRadius
+                    color: batteryTimeArea.containsMouse ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.12) : "transparent"
+
+                    Row {
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.spacingS
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Theme.spacingS
+
+                        DankIcon {
+                            name: "schedule"
+                            size: 18
+                            color: Theme.outline
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        StyledText {
+                            text: I18n.tr("Show Remaining Time")
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceText
+                            font.weight: Font.Normal
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    DankToggle {
+                        id: batteryTimeToggle
+                        anchors.right: parent.right
+                        anchors.rightMargin: Theme.spacingS
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 40
+                        height: 20
+                        checked: batteryContextMenu.currentWidgetData?.showBatteryTime ?? SettingsData.showBatteryTime
+                        onToggled: {
+                            root.overflowSettingChanged(batteryContextMenu.sectionId, batteryContextMenu.widgetIndex, "showBatteryTime", toggled);
+                        }
+                    }
+
+                    MouseArea {
+                        id: batteryTimeArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onPressed: {
+                            batteryTimeToggle.checked = !batteryTimeToggle.checked;
+                            root.overflowSettingChanged(batteryContextMenu.sectionId, batteryContextMenu.widgetIndex, "showBatteryTime", batteryTimeToggle.checked);
+                        }
+                    }
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: Math.max(18, Theme.fontSizeSmall) + Theme.spacingM * 2
+                    radius: Theme.cornerRadius
+                    color: batteryTimeOnlyOnBatteryArea.containsMouse && batteryTimeToggle.checked ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.12) : "transparent"
+                    opacity: batteryTimeToggle.checked ? 1.0 : 0.5
+
+                    Row {
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.spacingS + 18
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Theme.spacingS
+
+                        DankIcon {
+                            name: "battery_charging_full"
+                            size: 18
+                            color: Theme.outline
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        StyledText {
+                            text: I18n.tr("Only on Battery")
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceText
+                            font.weight: Font.Normal
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    DankToggle {
+                        id: batteryTimeOnlyOnBatteryToggle
+                        anchors.right: parent.right
+                        anchors.rightMargin: Theme.spacingS
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 40
+                        height: 20
+                        enabled: batteryTimeToggle.checked
+                        checked: batteryContextMenu.currentWidgetData?.showBatteryTimeOnlyOnBattery ?? SettingsData.showBatteryTimeOnlyOnBattery
+                        onToggled: {
+                            root.overflowSettingChanged(batteryContextMenu.sectionId, batteryContextMenu.widgetIndex, "showBatteryTimeOnlyOnBattery", toggled);
+                        }
+                    }
+
+                    MouseArea {
+                        id: batteryTimeOnlyOnBatteryArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: batteryTimeToggle.checked
+                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onPressed: {
+                            batteryTimeOnlyOnBatteryToggle.checked = !batteryTimeOnlyOnBatteryToggle.checked;
+                            root.overflowSettingChanged(batteryContextMenu.sectionId, batteryContextMenu.widgetIndex, "showBatteryTimeOnlyOnBattery", batteryTimeOnlyOnBatteryToggle.checked);
                         }
                     }
                 }

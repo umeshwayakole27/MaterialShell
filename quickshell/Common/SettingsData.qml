@@ -107,6 +107,7 @@ Singleton {
         saveSettings();
     }
 
+    property bool clipboardClickToPaste: false
     property bool clipboardEnterToPaste: false
     property bool clipboardRememberTypeFilter: false
     property string clipboardTypeFilter: "all"
@@ -241,11 +242,35 @@ Singleton {
     property string wallpaperFillMode: "Fill"
     property bool blurredWallpaperLayer: false
     property bool blurWallpaperOnOverview: false
+    property string wallpaperBackgroundColorMode: "black"
+    property string wallpaperBackgroundCustomColor: "#000000"
+    readonly property color effectiveWallpaperBackgroundColor: {
+        switch (wallpaperBackgroundColorMode) {
+        case "black":
+            return "#000000";
+        case "white":
+            return "#ffffff";
+        case "primary":
+            return Theme.primary;
+        case "surface":
+            return Theme.surfaceContainer;
+        case "custom":
+            return wallpaperBackgroundCustomColor;
+        default:
+            return "#000000";
+        }
+    }
 
     property bool frameEnabled: false
     onFrameEnabledChanged: saveSettings()
     property real frameThickness: 16
     onFrameThicknessChanged: saveSettings()
+    property int barInsetPaddingShared: -1
+    onBarInsetPaddingSharedChanged: saveSettings()
+    property bool barInsetPaddingSyncAll: false
+    onBarInsetPaddingSyncAllChanged: saveSettings()
+    property int frameBarInsetPadding: -1
+    onFrameBarInsetPaddingChanged: saveSettings()
     property real frameRounding: 23
     onFrameRoundingChanged: saveSettings()
     property string frameColor: ""
@@ -400,6 +425,19 @@ Singleton {
     property string workspaceFocusedBorderColor: "primary"
     property string workspaceFocusedBorderCustomColor: "#6750A4"
     property int workspaceFocusedBorderThickness: 2
+    property bool workspaceUnfocusedMonitorSeparateAppearance: false
+    property string workspaceUnfocusedMonitorColorMode: "default"
+    property string workspaceUnfocusedMonitorFocusedCustomColor: "#6750A4"
+    property string workspaceUnfocusedMonitorOccupiedColorMode: "none"
+    property string workspaceUnfocusedMonitorOccupiedCustomColor: "#625B71"
+    property string workspaceUnfocusedMonitorUnfocusedColorMode: "default"
+    property string workspaceUnfocusedMonitorUnfocusedCustomColor: "#49454E"
+    property string workspaceUnfocusedMonitorUrgentColorMode: "default"
+    property string workspaceUnfocusedMonitorUrgentCustomColor: "#B3261E"
+    property bool workspaceUnfocusedMonitorBorderEnabled: false
+    property string workspaceUnfocusedMonitorBorderColor: "primary"
+    property string workspaceUnfocusedMonitorBorderCustomColor: "#6750A4"
+    property int workspaceUnfocusedMonitorBorderThickness: 2
     property var workspaceNameIcons: ({})
     property bool waveProgressEnabled: true
     property bool scrollTitleEnabled: true
@@ -464,6 +502,7 @@ Singleton {
     onAppDrawerSectionViewModesChanged: saveSettings()
     property bool niriOverviewOverlayEnabled: true
     property string dankLauncherV2Size: "compact"
+    property bool dankLauncherV2ShowSourceBadges: true
     property bool dankLauncherV2BorderEnabled: false
     property int dankLauncherV2BorderThickness: 2
     property string dankLauncherV2BorderColor: "primary"
@@ -485,9 +524,104 @@ Singleton {
     property bool useAutoLocation: false
     property bool weatherEnabled: true
 
+    readonly property var _dashTabIds: ["overview", "media", "wallpaper", "weather", "settings"]
+    readonly property var _dashTabsDefault: [
+        {
+            "id": "overview",
+            "enabled": true
+        },
+        {
+            "id": "media",
+            "enabled": true
+        },
+        {
+            "id": "wallpaper",
+            "enabled": true
+        },
+        {
+            "id": "weather",
+            "enabled": true
+        },
+        {
+            "id": "settings",
+            "enabled": true
+        }
+    ]
+    property var dashTabs: _dashTabsDefault
+    onDashTabsChanged: saveSettings()
+
+    function getDashTabs() {
+        const stored = Array.isArray(dashTabs) ? dashTabs : [];
+        const result = [];
+        const seen = {};
+        for (var i = 0; i < stored.length; i++) {
+            const id = stored[i] && stored[i].id;
+            if (_dashTabIds.indexOf(id) < 0 || seen[id])
+                continue;
+            seen[id] = true;
+            result.push({
+                "id": id,
+                "enabled": stored[i].enabled !== false
+            });
+        }
+        for (var j = 0; j < _dashTabIds.length; j++) {
+            if (!seen[_dashTabIds[j]])
+                result.push({
+                    "id": _dashTabIds[j],
+                    "enabled": true
+                });
+        }
+        return result;
+    }
+
+    function visibleDashTabIds() {
+        return getDashTabs().filter(t => t.enabled && (t.id !== "weather" || weatherEnabled)).map(t => t.id);
+    }
+
+    function dashTabIndexForId(id) {
+        const idx = visibleDashTabIds().indexOf(id);
+        return idx < 0 ? 0 : idx;
+    }
+
+    function setDashTabOrder(ids) {
+        const current = getDashTabs();
+        const ordered = [];
+        for (var i = 0; i < ids.length; i++) {
+            const existing = current.find(t => t.id === ids[i]);
+            if (existing)
+                ordered.push(existing);
+        }
+        for (var j = 0; j < current.length; j++) {
+            if (ids.indexOf(current[j].id) < 0)
+                ordered.push(current[j]);
+        }
+        dashTabs = ordered;
+    }
+
+    function setDashTabEnabled(id, on) {
+        const current = getDashTabs();
+        if (!on && id !== "settings" && current.filter(t => t.enabled && t.id !== "settings").length <= 1)
+            return;
+        dashTabs = current.map(t => t.id === id ? {
+            "id": t.id,
+            "enabled": on
+        } : t);
+    }
+
+    function resetDashTabs() {
+        dashTabs = _dashTabsDefault.map(t => ({
+                    "id": t.id,
+                    "enabled": t.enabled
+                }));
+    }
+
     property string networkPreference: "auto"
 
-    property string iconTheme: "System Default"
+    property string iconThemeDark: "System Default"
+    property string iconThemeLight: "System Default"
+    property bool iconThemePerMode: false
+    property string lastAppliedIconTheme: ""
+    readonly property string iconTheme: resolveIconTheme()
     property var availableIconThemes: ["System Default"]
     property string systemDefaultIconTheme: ""
     property bool qt5ctAvailable: false
@@ -605,6 +739,10 @@ Singleton {
     property bool batteryNotifyLow: false
     property int batteryNotificationType: 0
     property bool batteryAutoPowerSaver: false
+    property bool showBatteryPercent: true
+    property bool showBatteryPercentOnlyOnBattery: false
+    property bool showBatteryTime: false
+    property bool showBatteryTimeOnlyOnBattery: false
     property bool lockBeforeSuspend: false
     property bool loginctlLockIntegration: true
     property bool fadeToLockEnabled: true
@@ -821,6 +959,7 @@ Singleton {
             "rightWidgets": ["systemTray", "clipboard", "cpuUsage", "memUsage", "notificationButton", "battery", "controlCenterButton"],
             "spacing": 4,
             "innerPadding": 4,
+            "barInsetPadding": -1,
             "bottomGap": 0,
             "transparency": 1.0,
             "widgetTransparency": 1.0,
@@ -1279,14 +1418,74 @@ Singleton {
             MangoService.generateLayoutConfig();
     }
 
+    function resolveIconTheme() {
+        if (iconThemePerMode && typeof SessionData !== "undefined" && SessionData.isLightMode)
+            return iconThemeLight;
+        return iconThemeDark;
+    }
+
     function applyStoredIconTheme() {
         updateGtkIconTheme();
         updateQtIconTheme();
         updateCosmicIconTheme();
     }
 
+    function setIconThemeUnmanaged() {
+        iconThemePerMode = false;
+        iconThemeDark = "System Default";
+        iconThemeLight = "System Default";
+        lastAppliedIconTheme = "";
+        saveSettings();
+    }
+
+    function checkIconThemeDrift() {
+        if (isGreeterMode)
+            return;
+        if (resolveIconTheme() === "System Default")
+            return;
+        if (!lastAppliedIconTheme)
+            return;
+        const script = `if command -v gsettings >/dev/null 2>&1; then
+        gsettings get org.gnome.desktop.interface icon-theme 2>/dev/null | sed "s/'//g"
+        elif command -v dconf >/dev/null 2>&1; then
+        dconf read /org/gnome/desktop/interface/icon-theme 2>/dev/null | sed "s/'//g"
+        fi`;
+
+        Proc.runCommand("iconThemeDriftCheck", ["sh", "-c", script], (output, exitCode) => {
+            const platform = (output || "").trim();
+            if (!platform)
+                return;
+            if (platform === root.lastAppliedIconTheme || platform === root.iconThemeDark || platform === root.iconThemeLight)
+                return;
+            root.setIconThemeUnmanaged();
+            ToastService.showWarning(I18n.tr("Icon theme changed outside DMS; switched to System Default", "shown when an external tool overrides the icon theme DMS applied"));
+        });
+    }
+
+    Connections {
+        target: typeof SessionData !== "undefined" ? SessionData : null
+        function onIsLightModeChanged() {
+            if (!SessionData.isSwitchingMode)
+                return;
+            if (!root.iconThemePerMode)
+                return;
+            if (root.iconThemeLight === root.iconThemeDark)
+                return;
+            root.applyStoredIconTheme();
+            root.saveSettings();
+        }
+    }
+
+    function cosmicIntegrationAvailable() {
+        const desktop = (Quickshell.env("XDG_CURRENT_DESKTOP") || "").toUpperCase();
+        return desktop.includes("COSMIC");
+    }
+
     function updateCosmicIconTheme() {
-        let cosmicThemeName = (iconTheme === "System Default") ? systemDefaultIconTheme : iconTheme;
+        if (!cosmicIntegrationAvailable())
+            return;
+        const resolved = resolveIconTheme();
+        let cosmicThemeName = (resolved === "System Default") ? systemDefaultIconTheme : resolved;
         if (!cosmicThemeName || cosmicThemeName === "System Default") {
             const detectScript = `if command -v gsettings >/dev/null 2>&1; then
             gsettings get org.gnome.desktop.interface icon-theme 2>/dev/null | sed "s/'//g"
@@ -1315,6 +1514,8 @@ Singleton {
     }
 
     function updateCosmicThemeMode(isLightMode) {
+        if (!cosmicIntegrationAvailable())
+            return;
         const isDark = isLightMode ? "false" : "true";
         const script = `mkdir -p ${_configDir}/cosmic/com.system76.CosmicTheme.Mode/v1
         printf '%s\\n' ${isDark} > ${_configDir}/cosmic/com.system76.CosmicTheme.Mode/v1/is_dark 2>/dev/null || true`;
@@ -1322,9 +1523,11 @@ Singleton {
     }
 
     function updateGtkIconTheme() {
-        const gtkThemeName = (iconTheme === "System Default") ? systemDefaultIconTheme : iconTheme;
+        const resolved = resolveIconTheme();
+        const gtkThemeName = (resolved === "System Default") ? systemDefaultIconTheme : resolved;
         if (gtkThemeName === "System Default" || gtkThemeName === "")
             return;
+        lastAppliedIconTheme = gtkThemeName;
         if (typeof DMSService !== "undefined" && DMSService.apiVersion >= 3 && typeof PortalService !== "undefined") {
             PortalService.setSystemIconTheme(gtkThemeName);
         }
@@ -1349,13 +1552,20 @@ Singleton {
         fi
         done
 
+        if command -v gsettings >/dev/null 2>&1; then
+        gsettings set org.gnome.desktop.interface icon-theme '${gtkThemeName}' 2>/dev/null || true
+        elif command -v dconf >/dev/null 2>&1; then
+        dconf write /org/gnome/desktop/interface/icon-theme "'${gtkThemeName}'" 2>/dev/null || true
+        fi
+
         pkill -HUP -f 'gtk' 2>/dev/null || true`;
 
         Quickshell.execDetached(["sh", "-lc", configScript]);
     }
 
     function updateQtIconTheme() {
-        const qtThemeName = (iconTheme === "System Default") ? "" : iconTheme;
+        const resolved = resolveIconTheme();
+        const qtThemeName = (resolved === "System Default") ? "" : resolved;
         if (!qtThemeName)
             return;
         const home = _homeUrl.replace("file://", "").replace(/'/g, "'\\''");
@@ -1442,6 +1652,9 @@ Singleton {
             if (obj?.directionalAnimationMode === 3 && frameMode !== "connected")
                 frameMode = "connected";
 
+            if (obj?.iconTheme !== undefined && obj?.iconThemeDark === undefined)
+                iconThemeDark = obj.iconTheme;
+
             if (obj?.weatherLocation !== undefined)
                 _legacyWeatherLocation = obj.weatherLocation;
             if (obj?.weatherCoordinates !== undefined)
@@ -1457,6 +1670,7 @@ Singleton {
             applyStoredTheme();
             updateCompositorCursor();
             Processes.detectQtTools();
+            Qt.callLater(checkIconThemeDrift);
 
             _checkSettingsWritable();
         } catch (e) {
@@ -2464,10 +2678,24 @@ Singleton {
     }
 
     function setIconTheme(themeName) {
-        iconTheme = themeName;
-        updateGtkIconTheme();
-        updateQtIconTheme();
-        updateCosmicIconTheme();
+        const light = iconThemePerMode && typeof SessionData !== "undefined" && SessionData.isLightMode;
+        setIconThemeForMode(themeName, light);
+    }
+
+    function setIconThemeForMode(themeName, light) {
+        if (light)
+            iconThemeLight = themeName;
+        else
+            iconThemeDark = themeName;
+        applyStoredIconTheme();
+        saveSettings();
+        if (typeof Theme !== "undefined" && Theme.currentTheme === Theme.dynamic)
+            Theme.generateSystemThemesFromCurrentTheme();
+    }
+
+    function setIconThemePerMode(enabled) {
+        iconThemePerMode = enabled;
+        applyStoredIconTheme();
         saveSettings();
         if (typeof Theme !== "undefined" && Theme.currentTheme === Theme.dynamic)
             Theme.generateSystemThemesFromCurrentTheme();
