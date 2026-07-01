@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Wayland
 import qs.Common
 import qs.Services
+import qs.Widgets
 
 Item {
     id: root
@@ -35,6 +36,22 @@ Item {
     property bool shouldBeVisible: false
     property bool isClosing: false
     property bool animationsEnabled: true
+    property bool hoverDismissEnabled: false
+    property bool hoverDismissSuspended: false
+
+    function cancelHoverDismiss() {
+        hoverDismissController.cancelPending();
+    }
+
+    function closeFromHoverDismiss() {
+        if (hoverDismissSuspended || isClosing || !shouldBeVisible)
+            return;
+        if (popoutHandle?.closeFromHoverDismiss)
+            popoutHandle.closeFromHoverDismiss();
+        else
+            close();
+    }
+
     property var customKeyboardFocus: null
     property bool backgroundInteractive: true
     property bool contentHandlesKeys: false
@@ -387,7 +404,8 @@ Item {
 
     readonly property real screenWidth: screen ? screen.width : 0
     readonly property real screenHeight: screen ? screen.height : 0
-    readonly property real dpr: screen ? screen.devicePixelRatio : 1
+    // devicePixelRatio rounds to integer under fractional scaling; use the real scale Qt renders at.
+    readonly property real dpr: screen ? (CompositorService.getScreenScale(screen) || screen.devicePixelRatio) : 1
 
     readonly property var shadowLevel: Theme.elevationLevel3
     readonly property real shadowFallbackOffset: 6
@@ -585,6 +603,17 @@ Item {
         color: "transparent"
         readonly property bool closeVisualActive: root.shouldBeVisible || root.isClosing
 
+        PopoutHoverDismiss {
+            id: hoverDismissController
+            anchors.fill: parent
+            dismissEnabled: root.hoverDismissEnabled
+            dismissSuspended: root.hoverDismissSuspended
+            surfaceVisible: root.shouldBeVisible
+            globalOffsetX: root._surfaceMarginLeft
+            globalOffsetY: root._fullHeight ? 0 : root._surfaceMarginTop
+            onDismissRequested: root.closeFromHoverDismiss()
+        }
+
         WindowBlur {
             id: popoutBlur
             targetWindow: contentWindow
@@ -607,7 +636,7 @@ Item {
         WlrLayershell.namespace: root.layerNamespace
         WlrLayershell.layer: root.effectivePopoutLayer
         WlrLayershell.exclusiveZone: -1
-        WlrLayershell.keyboardFocus: KeyboardFocus.keyboardFocus(shouldBeVisible || (isClosing && CompositorService.useHyprlandFocusGrab), customKeyboardFocus)
+        WlrLayershell.keyboardFocus: KeyboardFocus.keyboardFocus(shouldBeVisible, customKeyboardFocus)
 
         anchors {
             left: true
@@ -701,6 +730,11 @@ Item {
             }
 
             readonly property real computedScaleCollapsed: root.animationScaleCollapsed
+
+            PopoutHoverBodyTracker {
+                controller: hoverDismissController
+                trackingEnabled: root.hoverDismissEnabled && root.shouldBeVisible
+            }
 
             // openProgress: 0 = closed (at offset, scaleCollapsed), 1 = open (at 0, scale 1).
             QtObject {
@@ -812,7 +846,7 @@ Item {
 
                         layer.enabled: !Theme.isDirectionalEffect && publishedOpacity < 1
                         layer.smooth: false
-                        layer.textureSize: root.dpr > 1 ? Qt.size(Math.ceil(width * root.dpr), Math.ceil(height * root.dpr)) : Qt.size(0, 0)
+                        layer.textureSize: Qt.size(0, 0)
 
                         Behavior on opacity {
                             enabled: !Theme.isDirectionalEffect

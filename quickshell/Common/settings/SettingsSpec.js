@@ -184,6 +184,7 @@ var SPEC = {
     audioScrollMode: { def: "volume" },
     audioWheelScrollAmount: { def: 5 },
     audioDeviceScrollVolumeEnabled: { def: false },
+    mediaExcludePlayers: { def: [] },
     clockCompactMode: { def: false },
     focusedWindowCompactMode: { def: false },
     focusedWindowSize: { def: 1 },
@@ -569,7 +570,9 @@ var SPEC = {
             shadowOpacity: 60,
             shadowColorMode: "default",
             shadowCustomColor: "#000000",
-            clickThrough: false
+            clickThrough: false,
+            hoverPopouts: false,
+            hoverPopoutDelay: 150
         }], onChange: "updateBarConfigs"
     },
 
@@ -642,6 +645,7 @@ var SPEC = {
     frameCloseGaps: { def: true },
     frameLauncherEmergeSide: { def: "bottom" },
     frameLauncherArcExtender: { def: false },
+    frameLauncherEdgeHover: { def: false },
     frameMode: { def: "connected" },
     barInsetPaddingShared: { def: -1 },
     barInsetPaddingSyncAll: { def: false },

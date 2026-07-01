@@ -362,7 +362,7 @@
       "wallpaper"
     ],
     "icon": "wallpaper",
-    "description": "Color shown for areas not covered by wallpaper (e.g. Fit or Pad modes)"
+    "description": "Color shown for areas not covered by wallpaper"
   },
   {
     "section": "selectedMonitor",
@@ -3446,7 +3446,6 @@
     "keywords": [
       "appearance",
       "blur",
-      "blurred",
       "colors",
       "contrast",
       "foreground",
@@ -3459,10 +3458,11 @@
       "show",
       "stronger",
       "style",
+      "surface",
       "surfaces",
       "theme"
     ],
-    "description": "Show foreground surfaces on blurred panels for stronger contrast"
+    "description": "Show foreground surfaces on panels for stronger contrast"
   },
   {
     "section": "matugenTemplateGtk",
@@ -3618,8 +3618,6 @@
       "alert",
       "appearance",
       "around",
-      "blur",
-      "blurred",
       "border",
       "cards",
       "colors",
@@ -3641,7 +3639,7 @@
       "theme",
       "widgets"
     ],
-    "description": "Controls outlines around blurred foreground cards, pills, and notification cards"
+    "description": "Controls outlines around foreground cards, pills, and notification cards"
   },
   {
     "section": "m3ElevationLightDirection",
@@ -5644,6 +5642,26 @@
     "description": "Play sound when volume is adjusted"
   },
   {
+    "section": "mediaExcludePlayers",
+    "label": "Excluded Media Players",
+    "tabIndex": 16,
+    "category": "Media Player",
+    "keywords": [
+      "audio",
+      "exclude",
+      "excluded",
+      "ignore",
+      "media",
+      "mpris",
+      "music",
+      "playback",
+      "player",
+      "players",
+      "spotify"
+    ],
+    "icon": "do_not_disturb_on"
+  },
+  {
     "section": "_tab_16",
     "label": "Media Player",
     "tabIndex": 16,
@@ -6314,16 +6332,21 @@
       "coalesce",
       "dedupe",
       "duplicate",
+      "identical",
       "messages",
       "notif",
       "notification",
       "notifications",
       "notifs",
+      "popup",
       "repeat",
+      "show",
       "stack",
+      "stacking",
       "suppress",
       "toast"
-    ]
+    ],
+    "description": "Identical alerts show as one popup instead of stacking"
   },
   {
     "section": "notificationShowTimeoutBar",
@@ -8138,6 +8161,36 @@
       "window"
     ],
     "icon": "monitor"
+  },
+  {
+    "section": "frameLauncherEdgeHover",
+    "label": "Edge Hover Reveal",
+    "tabIndex": 33,
+    "category": "Frame",
+    "keywords": [
+      "app drawer",
+      "app menu",
+      "applications",
+      "border",
+      "connected",
+      "decoration",
+      "edge",
+      "emerge",
+      "frame",
+      "free",
+      "hover",
+      "hovering",
+      "launcher",
+      "open",
+      "panel",
+      "reveal",
+      "start menu",
+      "statusbar",
+      "taskbar",
+      "topbar",
+      "window"
+    ],
+    "description": "Open the launcher by hovering the emerge edge (when free of bar and dock)"
   },
   {
     "section": "frameEnable",

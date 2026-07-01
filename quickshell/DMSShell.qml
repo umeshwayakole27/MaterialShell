@@ -233,6 +233,12 @@ Item {
         sourceComponent: Frame {}
     }
 
+    Loader {
+        active: SettingsData.frameEnabled && SettingsData.frameLauncherEdgeHover
+        asynchronous: false
+        sourceComponent: FrameLauncherHoverZone {}
+    }
+
     DeferredAction {
         id: frameSurfaceReloadAction
         onTriggered: root.frameSurfacesLoaded = true
@@ -244,6 +250,8 @@ Item {
             id: barRepeaterModel
             values: JSON.parse(root._barLayoutStateJson)
         }
+
+        Component.onCompleted: BarWidgetService.dankBarRepeater = dankBarRepeater
 
         property var hyprlandOverviewLoaderRef: hyprlandOverviewLoader
 
